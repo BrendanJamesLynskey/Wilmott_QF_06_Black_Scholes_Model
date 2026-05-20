@@ -1,0 +1,676 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wilmott QF 06 &mdash; The Black&ndash;Scholes Model</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}]})"></script>
+    <style>
+        :root {
+            --bg-primary: #0a0a0a; --bg-card: #0d1117; --bg-code: #161b22;
+            --text-primary: #e6edf3; --text-secondary: #8b949e;
+            --accent: #fbbf24; --accent-dim: #fbbf2444; --accent-glow: #fbbf2433;
+            --accent-2: #f472b6; --accent-3: #a78bfa; --accent-4: #34d399;
+            --accent-5: #60a5fa;
+            --border: #21262d;
+            --font-display: 'Space Grotesk', sans-serif;
+            --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+            --font-body: 'Inter', sans-serif;
+            --max-width: 900px;
+        }
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        html { scroll-behavior: smooth; }
+        body { background: var(--bg-primary); color: var(--text-primary); font-family: var(--font-body); font-size: 17px; line-height: 1.7; overflow-x: hidden; }
+        .hero { min-height: 100vh; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 2rem 1.5rem; text-align: center; position: relative; }
+        .hero::before { content: ''; position: absolute; top: 0; left: 50%; transform: translateX(-50%); width: 700px; height: 600px; background: radial-gradient(circle, var(--accent-glow) 0%, transparent 70%); pointer-events: none; z-index: 0; }
+        .hero > * { position: relative; z-index: 1; }
+        .series-label { font-family: var(--font-mono); font-size: 0.85rem; color: var(--accent); letter-spacing: 0.15em; text-transform: uppercase; margin-bottom: 1rem; }
+        .hero h1 { font-family: var(--font-display); font-size: clamp(2rem, 5vw, 3.2rem); font-weight: 700; color: var(--text-primary); line-height: 1.2; margin-bottom: 1rem; }
+        .hero h1 .accent { color: var(--accent); }
+        .hero .subtitle { font-size: 1.1rem; color: var(--text-secondary); max-width: 640px; margin-bottom: 2rem; }
+        .tags { display: flex; flex-wrap: wrap; gap: 0.5rem; justify-content: center; margin-bottom: 2.5rem; }
+        .tag { font-family: var(--font-mono); font-size: 0.75rem; padding: 0.25rem 0.75rem; border-radius: 999px; border: 1px solid var(--accent); color: var(--accent); background: var(--accent-dim); white-space: nowrap; }
+        .pipeline { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 0.25rem; margin-bottom: 1rem; max-width: var(--max-width); }
+        .pipeline-step { font-family: var(--font-mono); font-size: 0.7rem; padding: 0.3rem 0.7rem; background: var(--bg-card); border: 1px solid var(--border); border-radius: 4px; color: var(--text-secondary); white-space: nowrap; }
+        .pipeline-arrow { color: var(--accent); font-size: 0.9rem; font-weight: 700; }
+        .slide { min-height: 100vh; max-width: var(--max-width); margin: 0 auto; padding: 4rem 1.5rem; position: relative; display: flex; flex-direction: column; justify-content: center; }
+        .slide-number { font-family: var(--font-display); font-size: 5rem; font-weight: 700; color: var(--accent-dim); position: absolute; top: 2rem; right: 1.5rem; line-height: 1; user-select: none; }
+        .slide h2 { font-family: var(--font-display); font-size: 1.9rem; font-weight: 700; color: var(--accent); margin-bottom: 1.5rem; line-height: 1.25; }
+        .slide h3 { font-family: var(--font-display); font-size: 1.3rem; font-weight: 600; color: var(--text-primary); margin-top: 1.5rem; margin-bottom: 0.75rem; }
+        .slide p { margin-bottom: 1rem; color: var(--text-secondary); }
+        .slide p strong { color: var(--text-primary); }
+        .slide ul, .slide ol { margin-bottom: 1rem; padding-left: 1.5rem; color: var(--text-secondary); }
+        .slide li { margin-bottom: 0.4rem; }
+        .slide li strong { color: var(--text-primary); }
+        .slide code { background: var(--bg-code); padding: 0.1rem 0.35rem; border-radius: 3px; font-family: var(--font-mono); font-size: 0.85em; color: var(--accent); }
+        .diagram-grid { display: grid; gap: 0.75rem; margin: 1.5rem 0; padding: 1.5rem; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; }
+        .diagram-grid.cols-2 { grid-template-columns: 1fr 1fr; }
+        .diagram-grid.cols-3 { grid-template-columns: 1fr 1fr 1fr; }
+        .diagram-grid.cols-4 { grid-template-columns: 1fr 1fr 1fr 1fr; }
+        .diagram-panel { padding: 1rem; background: var(--bg-code); border: 1px solid var(--border); border-radius: 6px; }
+        .diagram-panel.accent-border { border-left: 3px solid var(--accent); }
+        .diagram-panel.r { border-left: 3px solid var(--accent-2); }
+        .diagram-panel.p { border-left: 3px solid var(--accent-3); }
+        .diagram-panel.g { border-left: 3px solid var(--accent-4); }
+        .diagram-panel.b { border-left: 3px solid var(--accent-5); }
+        .diagram-panel h4 { font-family: var(--font-display); font-size: 1rem; color: var(--accent); margin-bottom: 0.5rem; }
+        .diagram-panel.r h4 { color: var(--accent-2); }
+        .diagram-panel.p h4 { color: var(--accent-3); }
+        .diagram-panel.g h4 { color: var(--accent-4); }
+        .diagram-panel.b h4 { color: var(--accent-5); }
+        .diagram-panel p, .diagram-panel ul { font-size: 0.9rem; }
+        .callout { background: var(--bg-card); border-left: 3px solid var(--accent); border-radius: 0 8px 8px 0; padding: 1rem 1.25rem; margin: 1.25rem 0; }
+        .callout p { margin-bottom: 0; }
+        .callout .callout-label { font-family: var(--font-mono); font-size: 0.75rem; color: var(--accent); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 0.3rem; }
+        .quote { font-family: var(--font-display); font-size: 1.1rem; font-style: italic; color: var(--text-primary); padding: 1rem 1.5rem; border-left: 3px solid var(--accent); background: var(--bg-card); margin: 1.25rem 0; border-radius: 0 8px 8px 0; }
+        .quote .attr { display: block; margin-top: 0.5rem; font-style: normal; font-size: 0.85rem; color: var(--text-secondary); font-family: var(--font-mono); }
+        .canvas-wrap { background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 1rem; margin: 1.25rem 0; overflow-x: auto; }
+        .canvas-wrap canvas, .canvas-wrap svg { display: block; margin: 0 auto; max-width: 100%; }
+        .control-panel { background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 1.25rem; margin: 1.25rem 0; }
+        .control-row { display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem; margin-bottom: 0.75rem; }
+        .control-row label { font-family: var(--font-mono); font-size: 0.8rem; color: var(--text-secondary); min-width: 160px; }
+        .control-row input[type="range"] { flex: 1; min-width: 150px; accent-color: var(--accent); }
+        .control-row select, .control-row input[type="number"] { background: var(--bg-code); border: 1px solid var(--border); color: var(--text-primary); border-radius: 4px; padding: 0.3rem 0.5rem; font-family: var(--font-mono); font-size: 0.8rem; }
+        .control-row .val { font-family: var(--font-mono); font-size: 0.85rem; color: var(--accent); min-width: 80px; text-align: right; }
+        .btn { font-family: var(--font-mono); font-size: 0.8rem; padding: 0.4rem 0.9rem; background: var(--accent-dim); color: var(--accent); border: 1px solid var(--accent); border-radius: 4px; cursor: pointer; transition: background 0.15s ease; }
+        .btn:hover { background: rgba(251,191,36,0.25); }
+        .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+        .btn.secondary { background: var(--bg-code); color: var(--text-secondary); border-color: var(--border); }
+        .metric-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 0.5rem; margin-top: 0.75rem; }
+        .metric { background: var(--bg-code); border: 1px solid var(--border); border-radius: 6px; padding: 0.6rem 0.8rem; text-align: center; }
+        .metric .metric-label { font-family: var(--font-mono); font-size: 0.7rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.08em; }
+        .metric .metric-value { font-family: var(--font-display); font-size: 1.25rem; color: var(--accent); font-weight: 600; margin-top: 0.2rem; }
+        .contents-list { list-style: none; padding-left: 0; counter-reset: contents; }
+        .contents-list li { counter-increment: contents; padding: 0.6rem 0; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 1rem; }
+        .contents-list li:last-child { border-bottom: none; }
+        .contents-list li::before { content: counter(contents, decimal-leading-zero); font-family: var(--font-mono); font-size: 0.85rem; color: var(--accent); min-width: 2rem; }
+        .contents-list a { color: var(--text-primary); text-decoration: none; }
+        .contents-list a:hover { color: var(--accent); }
+        .footer { text-align: center; padding: 3rem 1.5rem; color: var(--text-secondary); font-size: 0.85rem; border-top: 1px solid var(--border); max-width: var(--max-width); margin: 0 auto; }
+        .footer a { color: var(--accent); text-decoration: none; }
+        .katex { color: var(--text-primary); }
+        .katex-display { margin: 1rem 0; overflow-x: auto; overflow-y: hidden; }
+        table { width: 100%; border-collapse: collapse; font-size: 0.9rem; margin: 1rem 0; }
+        th { background: var(--bg-code); color: var(--accent); font-weight: 600; text-align: left; padding: 0.6rem 0.85rem; border-bottom: 1px solid var(--border); font-family: var(--font-display); }
+        td { padding: 0.5rem 0.85rem; border-bottom: 1px solid var(--border); color: var(--text-secondary); vertical-align: top; }
+        tr:last-child td { border-bottom: none; }
+        tr:nth-child(even) td { background: rgba(13, 17, 23, 0.5); }
+        @media (max-width: 640px) {
+            .slide { padding: 3rem 1rem; min-height: auto; }
+            .slide-number { font-size: 3rem; top: 1.5rem; right: 1rem; }
+            .slide h2 { font-size: 1.5rem; }
+            .diagram-grid.cols-2, .diagram-grid.cols-3, .diagram-grid.cols-4 { grid-template-columns: 1fr; }
+            .hero h1 { font-size: 1.8rem; }
+        }
+    </style>
+</head>
+<body>
+
+<header class="hero">
+    <div class="series-label">Paul Wilmott Introduces Quantitative Finance &mdash; Deck 06</div>
+    <h1>The <span class="accent">Black&ndash;Scholes</span> Model</h1>
+    <p class="subtitle">A delta-hedged portfolio is riskless. A riskless portfolio earns $r$. Two lines of It&ocirc; and one no-arbitrage step give the most famous PDE in finance.</p>
+
+    <div class="tags">
+        <span class="tag">$V(S,t)$</span><span class="tag">geometric BM</span>
+        <span class="tag">delta-hedge</span><span class="tag">no arbitrage</span>
+        <span class="tag">BS PDE</span><span class="tag">heat equation</span>
+        <span class="tag">payoff at $T$</span><span class="tag">risk-neutral</span>
+    </div>
+
+    <div class="pipeline">
+        <span class="pipeline-step">$dS = \mu S\,dt + \sigma S\,dW$</span>
+        <span class="pipeline-arrow">&rarr;</span>
+        <span class="pipeline-step">It&ocirc; on $V$</span>
+        <span class="pipeline-arrow">&rarr;</span>
+        <span class="pipeline-step">$\Pi = V - \Delta S$</span>
+        <span class="pipeline-arrow">&rarr;</span>
+        <span class="pipeline-step">$\Delta = V_S$</span>
+        <span class="pipeline-arrow">&rarr;</span>
+        <span class="pipeline-step">BS PDE</span>
+    </div>
+</header>
+
+<section class="slide" id="slide-00">
+    <div class="slide-number">00</div>
+    <h2>Topics We'll Cover</h2>
+    <ul class="contents-list">
+        <li><a href="#slide-01">The setup &mdash; $V(S,t)$ and $dS$</a></li>
+        <li><a href="#slide-02">A very special portfolio &mdash; $\Pi = V - \Delta S$</a></li>
+        <li><a href="#slide-03">Apply It&ocirc; and choose $\Delta = V_S$</a></li>
+        <li><a href="#slide-04">No-arbitrage forces $d\Pi = r\Pi\,dt$</a></li>
+        <li><a href="#slide-05">The Black&ndash;Scholes PDE</a></li>
+        <li><a href="#slide-06">Final and boundary conditions</a></li>
+        <li><a href="#slide-07">The BS assumptions &mdash; what we sneaked in</a></li>
+        <li><a href="#slide-08">Solving the PDE &mdash; change of variable to heat eqn</a></li>
+        <li><a href="#slide-09">Three derivations, one price</a></li>
+        <li><a href="#slide-10">Interactive: option value surface viewer</a></li>
+    </ul>
+</section>
+
+<section class="slide" id="slide-01">
+    <div class="slide-number">01</div>
+    <h2>The Setup</h2>
+    <p>We want the fair price $V(S,t)$ of an option whose payoff at maturity $T$ depends on the underlying $S$. The underlying is assumed to follow geometric Brownian motion under the real-world measure:</p>
+    <p>$$dS = \mu S\,dt + \sigma S\,dW.$$</p>
+    <p>$\mu$ is the expected return, $\sigma$ the volatility, $W$ a standard Brownian motion. $V(S,t)$ is a deterministic function of two variables &mdash; the randomness it inherits comes entirely from $S$.</p>
+
+    <div class="quote">
+        <p>"The big leap is to notice that an option and its underlying share are <em>two</em> instruments driven by the same source of randomness. A suitable combination kills the noise."</p>
+        <span class="attr">&mdash; Wilmott, Ch. 6 (paraphrase)</span>
+    </div>
+
+    <div class="diagram-grid cols-2">
+        <div class="diagram-panel accent-border">
+            <h4>Two unknowns we haven't yet committed to</h4>
+            <ul>
+                <li>The functional form of $V(S,t)$.</li>
+                <li>The investor's risk preferences and beliefs about $\mu$.</li>
+            </ul>
+            <p>The miracle of Black&ndash;Scholes is that the answer doesn't depend on $\mu$ at all.</p>
+        </div>
+        <div class="diagram-panel b">
+            <h4>What we will use</h4>
+            <ul>
+                <li>It&ocirc;'s lemma (deck 05).</li>
+                <li>A self-financing portfolio.</li>
+                <li>Continuous trading at no cost.</li>
+                <li>No arbitrage at instantaneous level.</li>
+            </ul>
+        </div>
+    </div>
+</section>
+
+<section class="slide" id="slide-02">
+    <div class="slide-number">02</div>
+    <h2>A Very Special Portfolio</h2>
+    <p>Form the portfolio</p>
+    <p>$$\Pi \;=\; V \;-\; \Delta\, S,$$</p>
+    <p>where $V$ is one long option and $\Delta$ is a (to be chosen) number of short shares. Both legs are exposed to $dW$. The plan is to choose $\Delta$ so the two exposures cancel.</p>
+
+    <p>Over an infinitesimal interval, with $\Delta$ held fixed (this is the self-financing condition):</p>
+    <p>$$d\Pi = dV - \Delta\,dS.$$</p>
+
+    <div class="callout">
+        <div class="callout-label">"Self-financing"</div>
+        <p>Means: any change in the value of $\Pi$ comes from the changes in the prices of its constituents, not from cash injected or withdrawn. We're not topping up the position from outside; we're letting the existing positions revalue. That's why we don't get a $\,S\,d\Delta\,$ term.</p>
+    </div>
+
+    <p>Now apply It&ocirc; to $V$, expand $dS$, and look at what coefficient sits in front of $dW$. If we can zero that coefficient with a clever choice of $\Delta$, the portfolio's value becomes a smooth function of time &mdash; no randomness left.</p>
+</section>
+
+<section class="slide" id="slide-03">
+    <div class="slide-number">03</div>
+    <h2>Apply It&ocirc; and Choose $\Delta = V_S$</h2>
+    <p>It&ocirc;'s lemma applied to $V(S,t)$, with $dS = \mu S\,dt + \sigma S\,dW$:</p>
+    <p>$$dV = \Big(V_t + \mu S\, V_S + \tfrac{1}{2}\sigma^2 S^2\, V_{SS}\Big)\,dt \;+\; \sigma S\, V_S\,dW.$$</p>
+
+    <p>So</p>
+    <p>$$d\Pi = dV - \Delta\,dS = \underbrace{\Big(V_t + \mu S\, V_S + \tfrac{1}{2}\sigma^2 S^2\, V_{SS} - \Delta\,\mu S\Big)\,dt}_{\text{deterministic}} + \underbrace{\Big(\sigma S\, V_S - \Delta\,\sigma S\Big)\,dW}_{\text{noise}}.$$</p>
+
+    <p>The single coefficient of $dW$ is $\sigma S(V_S - \Delta)$. Choose</p>
+    <p>$$\boxed{\;\Delta = \frac{\partial V}{\partial S}\;}$$</p>
+    <p>and the $dW$ term vanishes. This is <em>delta-hedging</em>: hold $V_S$ shares short against one long option and your portfolio's tiny moves are deterministic.</p>
+
+    <div class="callout">
+        <div class="callout-label">Why $\mu$ drops out</div>
+        <p>With $\Delta = V_S$, the $\mu$ term in $d\Pi$ becomes $\mu S\,V_S - V_S \mu S = 0$. The drift of the underlying never appears in the equation for $V$. Two market participants with opposite views about $\mu$ will agree on the option price.</p>
+    </div>
+</section>
+
+<section class="slide" id="slide-04">
+    <div class="slide-number">04</div>
+    <h2>No-arbitrage Forces $d\Pi = r\Pi\,dt$</h2>
+    <p>After the hedge, $\Pi$ is risk-free over the next instant. By the no-arbitrage principle (deck 01) a riskless portfolio must earn the risk-free rate:</p>
+    <p>$$d\Pi \;=\; r\,\Pi\,dt \;=\; r\,(V - \Delta\,S)\,dt.$$</p>
+
+    <p>Setting this equal to the deterministic part of the previous slide:</p>
+    <p>$$\Big(V_t + \tfrac{1}{2}\sigma^2 S^2 V_{SS}\Big)\,dt \;=\; r\,(V - V_S\,S)\,dt.$$</p>
+
+    <p>(The $\mu S V_S - V_S \mu S$ terms have already cancelled.) Rearranging into a tidy form:</p>
+
+    <div class="callout">
+        <div class="callout-label">What we just did</div>
+        <p>Combined three things &mdash; It&ocirc;'s lemma, a self-financing delta hedge, and a one-step no-arbitrage argument &mdash; to derive a deterministic equation for the option price. Not a single probability or utility function appeared.</p>
+    </div>
+
+    <p>If somebody quotes you an option price that violates this equation, you can hedge against them and bank a riskless profit, in the same spirit as the forward-pricing argument from deck 01 &mdash; but now <em>continuously</em>.</p>
+</section>
+
+<section class="slide" id="slide-05">
+    <div class="slide-number">05</div>
+    <h2>The Black&ndash;Scholes PDE</h2>
+    <p>Collecting:</p>
+    <p>$$\boxed{\;\frac{\partial V}{\partial t} \;+\; \tfrac{1}{2}\sigma^2 S^2\,\frac{\partial^2 V}{\partial S^2} \;+\; r S\,\frac{\partial V}{\partial S} \;-\; r V \;=\; 0\;}$$</p>
+
+    <p>This is a linear, second-order, parabolic PDE for the function $V(S,t)$ on the region $S > 0$, $0 \le t \le T$. It is solved <em>backwards in time</em>: a payoff at $t = T$ is specified, and we ask what value at earlier $t$ is consistent.</p>
+
+    <h3>The shape of the equation, piece by piece</h3>
+    <table>
+        <thead><tr><th>Term</th><th>Interpretation</th></tr></thead>
+        <tbody>
+            <tr><td>$V_t$</td><td>Time decay &mdash; how the value changes as the clock ticks even with $S$ frozen.</td></tr>
+            <tr><td>$\tfrac{1}{2}\sigma^2 S^2 V_{SS}$</td><td>Gamma term &mdash; the value gained from convexity in $S$ under random shocks. The It&ocirc; correction.</td></tr>
+            <tr><td>$r S\, V_S$</td><td>Cost-of-carry &mdash; how the value drifts under the risk-free growth of the underlying.</td></tr>
+            <tr><td>$-rV$</td><td>Discounting &mdash; what the option must lose to keep pace with a riskless cash account.</td></tr>
+        </tbody>
+    </table>
+
+    <p>The PDE knows about $\sigma$ and $r$, and about <em>nothing else</em> from the real-world model. Same equation for calls, puts, digitals, barriers; only the terminal condition changes.</p>
+</section>
+
+<section class="slide" id="slide-06">
+    <div class="slide-number">06</div>
+    <h2>Final and Boundary Conditions</h2>
+    <p>A PDE without boundary data has many solutions. The contract specification supplies what the equation needs.</p>
+
+    <div class="diagram-grid cols-2">
+        <div class="diagram-panel accent-border">
+            <h4>European call</h4>
+            <p>Terminal payoff:</p>
+            <p>$$V(S, T) = \max(S - K, 0).$$</p>
+            <p>Boundaries:</p>
+            <ul>
+                <li>$V(0, t) = 0$ &mdash; if the stock is worthless and stays so, the call is too.</li>
+                <li>$V(S, t) \sim S - K e^{-r(T-t)}$ as $S \to \infty$ &mdash; deep in the money, the call behaves like a forward.</li>
+            </ul>
+        </div>
+        <div class="diagram-panel p">
+            <h4>European put</h4>
+            <p>Terminal payoff:</p>
+            <p>$$V(S, T) = \max(K - S, 0).$$</p>
+            <p>Boundaries:</p>
+            <ul>
+                <li>$V(0, t) = K e^{-r(T-t)}$ &mdash; deep in the money put = discounted strike.</li>
+                <li>$V(S, t) \to 0$ as $S \to \infty$.</li>
+            </ul>
+        </div>
+    </div>
+
+    <h3>Other contracts</h3>
+    <p>A <strong>binary call</strong> pays $\mathbf{1}_{S>K}$ at $T$; a <strong>barrier option</strong> dies (or activates) when $S$ first touches a level; an <strong>Asian option</strong> depends on the path average. All have the same PDE, different terminal/boundary conditions. The PDE machinery is more powerful than any one closed form.</p>
+
+    <div class="callout">
+        <div class="callout-label">Linearity gives put&ndash;call parity</div>
+        <p>The PDE is linear, so $V_C - V_P$ satisfies it with terminal payoff $\max(S-K,0) - \max(K-S,0) = S - K$. The function $S - K e^{-r(T-t)}$ solves the PDE with that payoff &mdash; hence the identity $C - P = S - K e^{-r(T-t)}$.</p>
+    </div>
+</section>
+
+<section class="slide" id="slide-07">
+    <div class="slide-number">07</div>
+    <h2>The BS Assumptions &mdash; What We Sneaked In</h2>
+    <p>The derivation is short. Every step has an assumption hiding in it.</p>
+
+    <table>
+        <thead><tr><th>Assumption</th><th>What it bought us</th><th>Where it bites</th></tr></thead>
+        <tbody>
+            <tr><td>Continuous trading, no transaction costs</td><td>Self-financing portfolio at zero cost; the $\Delta$ can be rebalanced freely.</td><td>Real markets have spreads and discrete rebalancing &mdash; gamma profit/loss.</td></tr>
+            <tr><td>Constant $\sigma$</td><td>The PDE has only one extra parameter beyond $r$.</td><td>The market disagrees &mdash; implied vol has a smile (deck 07/08).</td></tr>
+            <tr><td>Constant $r$</td><td>Discounting is trivial; futures = forwards.</td><td>Long-dated and rate-sensitive products need stochastic rates (deck 12).</td></tr>
+            <tr><td>Lognormal $S$, no jumps</td><td>Geometric BM has tractable closed forms.</td><td>Tails of real return distributions are heavier; crashes happen.</td></tr>
+            <tr><td>No dividends (or known yield $q$)</td><td>$rS V_S$ as the carry term.</td><td>Discrete dividend dates need a model patch.</td></tr>
+            <tr><td>Short selling and infinite divisibility</td><td>Both sides of every trade can always be executed.</td><td>In a crisis, no.</td></tr>
+        </tbody>
+    </table>
+
+    <div class="callout">
+        <div class="callout-label">The Wilmott line</div>
+        <p>"The Black&ndash;Scholes model is not a description of the market. It is a self-consistent <em>language</em> the market uses to <em>quote</em> options &mdash; a way of expressing the price in units of implied volatility." The PDE is right; the assumptions are wrong on purpose, and we manage that with the Greeks (deck 07).</p>
+    </div>
+</section>
+
+<section class="slide" id="slide-08">
+    <div class="slide-number">08</div>
+    <h2>Solving the PDE &mdash; Reduction to the Heat Equation</h2>
+    <p>The Black&ndash;Scholes PDE can be transformed into the standard heat equation by a sequence of substitutions.</p>
+
+    <ol>
+        <li>Reverse time: let $\tau = T - t$ so the equation runs forward in $\tau$ from the payoff.</li>
+        <li>Switch to log-spot: $x = \log S$. The $S^2 V_{SS}$ and $S V_S$ collapse into constant-coefficient $V_{xx}$ and $V_x$.</li>
+        <li>Remove drift by an exponential shift $u(x,\tau) = e^{\alpha x + \beta \tau}V$, choosing $\alpha, \beta$ to kill the linear-$V$ and $V_x$ terms.</li>
+        <li>What survives is $u_\tau = \tfrac{1}{2}\sigma^2 u_{xx}$ &mdash; the heat equation.</li>
+    </ol>
+
+    <p>The heat equation has a Green's function (the Gaussian kernel) and the solution is a convolution of the initial condition with it. Backing out the substitutions gives the closed-form European call:</p>
+    <p>$$C(S,t) = S\,N(d_1) - K e^{-r(T-t)}\,N(d_2),$$</p>
+    <p>$$d_{1,2} = \frac{\log(S/K) + (r \pm \tfrac{1}{2}\sigma^2)(T-t)}{\sigma\sqrt{T-t}}.$$</p>
+
+    <div class="diagram-grid cols-3">
+        <div class="diagram-panel g">
+            <h4>Closed form</h4>
+            <p>Calls, puts, binaries, forward starts &mdash; if the payoff is simple enough. Deck 07 starts here.</p>
+        </div>
+        <div class="diagram-panel p">
+            <h4>Similarity reductions</h4>
+            <p>Barriers and lookbacks reduce dimension by exploiting the scale invariance of the PDE.</p>
+        </div>
+        <div class="diagram-panel b">
+            <h4>Numerical</h4>
+            <p>Finite differences (decks 13&ndash;14), binomial trees (deck 03), Monte Carlo. Same PDE, different machine.</p>
+        </div>
+    </div>
+</section>
+
+<section class="slide" id="slide-09">
+    <div class="slide-number">09</div>
+    <h2>Three Derivations, One Price</h2>
+    <p>The PDE derivation is not the only road to the BS formula. Three independent routes agree exactly:</p>
+
+    <div class="diagram-grid cols-3">
+        <div class="diagram-panel accent-border">
+            <h4>PDE / hedging</h4>
+            <p>What we just did. Continuous delta-hedging plus no-arbitrage gives the BS PDE; solve it.</p>
+        </div>
+        <div class="diagram-panel g">
+            <h4>Martingale / risk-neutral</h4>
+            <p>Change measure (Girsanov) so $S$ has drift $r$. The price is the discounted expected payoff:</p>
+            <p>$$V_0 = e^{-rT}\,\mathbb{E}^{\mathbb{Q}}[\,\mathrm{payoff}(S_T)\,].$$</p>
+        </div>
+        <div class="diagram-panel p">
+            <h4>Binomial limit</h4>
+            <p>Take the Cox&ndash;Ross&ndash;Rubinstein discrete tree (deck 03) and let the step size go to zero with $u/d$ scaled by $\sigma\sqrt{\delta t}$. The limit is the BS formula.</p>
+        </div>
+    </div>
+
+    <p>Each derivation emphasises a different idea: PDE makes the role of <em>hedging</em> explicit; martingales make the role of <em>measure change</em> explicit; binomial limits make the role of <em>replication</em> explicit. They are different vantage points on the same theorem.</p>
+
+    <div class="callout">
+        <div class="callout-label">CAPM / utility route</div>
+        <p>Black and Scholes' original paper used a CAPM-style equilibrium argument; Merton later supplied the cleaner hedging argument. Both are in the historical record. All three give $V_0 = SN(d_1) - K e^{-rT} N(d_2)$ for the European call &mdash; the formula is robust to <em>how</em> you derive it.</p>
+    </div>
+</section>
+
+<section class="slide" id="slide-10">
+    <div class="slide-number">10</div>
+    <h2>Interactive: Option Value Surface Viewer</h2>
+    <p>Slide $K$, $T$, $\sigma$, $r$ and toggle call/put. The left subplot shows $V(S,t)$ as a heatmap over the $S\!\times\!t$ rectangle. The right subplot shows the family of curves $V(S,t)$ for a handful of times $t$, watching the smooth curve harden into the kinked payoff as $t \to T$.</p>
+
+    <div class="canvas-wrap">
+        <canvas id="bs-canvas" width="840" height="340"></canvas>
+    </div>
+
+    <div class="control-panel">
+        <div class="control-row">
+            <label for="K-slider">Strike $K$</label>
+            <input type="range" id="K-slider" min="40" max="160" step="1" value="100">
+            <span class="val" id="K-val">100</span>
+        </div>
+        <div class="control-row">
+            <label for="T-slider">Maturity $T$ (yr)</label>
+            <input type="range" id="T-slider" min="0.1" max="3" step="0.05" value="1">
+            <span class="val" id="T-val">1.00</span>
+        </div>
+        <div class="control-row">
+            <label for="sig-slider">Volatility $\sigma$</label>
+            <input type="range" id="sig-slider" min="0.05" max="0.8" step="0.01" value="0.2">
+            <span class="val" id="sig-val">0.20</span>
+        </div>
+        <div class="control-row">
+            <label for="r-slider">Rate $r$</label>
+            <input type="range" id="r-slider" min="0" max="0.15" step="0.005" value="0.04">
+            <span class="val" id="r-val">0.040</span>
+        </div>
+        <div class="control-row">
+            <label for="S-slider">Spot $S$ (probe)</label>
+            <input type="range" id="S-slider" min="20" max="200" step="1" value="100">
+            <span class="val" id="S-val">100</span>
+        </div>
+        <div class="control-row">
+            <label for="type-sel">Option type</label>
+            <select id="type-sel">
+                <option value="call" selected>Call</option>
+                <option value="put">Put</option>
+            </select>
+            <span class="val" style="min-width:0;flex:1;text-align:left;">&nbsp;</span>
+        </div>
+        <div class="metric-grid">
+            <div class="metric"><div class="metric-label">Price $V(S,0)$</div><div class="metric-value" id="m-V">&mdash;</div></div>
+            <div class="metric"><div class="metric-label">Intrinsic</div><div class="metric-value" id="m-intr">&mdash;</div></div>
+            <div class="metric"><div class="metric-label">Time value</div><div class="metric-value" id="m-time">&mdash;</div></div>
+            <div class="metric"><div class="metric-label">$d_1$</div><div class="metric-value" id="m-d1">&mdash;</div></div>
+            <div class="metric"><div class="metric-label">$d_2$</div><div class="metric-value" id="m-d2">&mdash;</div></div>
+        </div>
+    </div>
+
+    <p>The heatmap is the price surface; lighter values are higher. Note how the contour lines bend toward the strike as $t\to T$ &mdash; that is the value collapsing onto its intrinsic kink. Push $\sigma$ up and the curves visibly puff out for $t < T$; push $T$ down and they crowd against the payoff. Push $r$ up and (for a call) the curves shift up &mdash; the cost-of-carry effect.</p>
+</section>
+
+<footer class="footer">
+    <p>Deck 06 of the <a href="https://github.com/BrendanJamesLynskey/Wilmott_QF_Hub">Paul Wilmott Introduces Quantitative Finance &mdash; Companion Series</a>.</p>
+    <p style="margin-top: 0.6rem;">Companion to chapters 6 and 7 of <em>Paul Wilmott Introduces Quantitative Finance</em>, 2nd edition (Wiley, 2007).</p>
+</footer>
+
+<script>
+(function() {
+    const $ = id => document.getElementById(id);
+    const sK = $('K-slider'), sT = $('T-slider'), sSig = $('sig-slider'),
+          sR = $('r-slider'), sS = $('S-slider'), sel = $('type-sel');
+    const vK = $('K-val'), vT = $('T-val'), vSig = $('sig-val'),
+          vR = $('r-val'), vS = $('S-val');
+    const mV = $('m-V'), mIntr = $('m-intr'), mTime = $('m-time'),
+          mD1 = $('m-d1'), mD2 = $('m-d2');
+    const canvas = $('bs-canvas'), ctx = canvas.getContext('2d');
+
+    function fmt(x, dp) { return x.toFixed(dp == null ? 3 : dp); }
+
+    // Abramowitz & Stegun 7.1.26 erf approximation
+    function erf(x) {
+        const sign = x < 0 ? -1 : 1;
+        x = Math.abs(x);
+        const a1 =  0.254829592, a2 = -0.284496736, a3 =  1.421413741,
+              a4 = -1.453152027, a5 =  1.061405429, p  =  0.3275911;
+        const t = 1.0 / (1.0 + p * x);
+        const y = 1.0 - (((((a5*t + a4)*t) + a3)*t + a2)*t + a1)*t * Math.exp(-x*x);
+        return sign * y;
+    }
+    function N(x) { return 0.5 * (1 + erf(x / Math.SQRT2)); }
+
+    function bsPrice(S, K, r, sig, tau, isCall) {
+        if (tau <= 1e-10) {
+            return isCall ? Math.max(S - K, 0) : Math.max(K - S, 0);
+        }
+        if (S <= 1e-10) return isCall ? 0 : K * Math.exp(-r * tau);
+        const d1 = (Math.log(S / K) + (r + 0.5 * sig * sig) * tau) / (sig * Math.sqrt(tau));
+        const d2 = d1 - sig * Math.sqrt(tau);
+        if (isCall) return S * N(d1) - K * Math.exp(-r * tau) * N(d2);
+        return K * Math.exp(-r * tau) * N(-d2) - S * N(-d1);
+    }
+
+    function draw() {
+        const K = +sK.value, T = +sT.value, sig = +sSig.value, r = +sR.value,
+              S = +sS.value, isCall = sel.value === 'call';
+        vK.textContent = String(K);
+        vT.textContent = fmt(T, 2);
+        vSig.textContent = fmt(sig, 2);
+        vR.textContent = fmt(r);
+        vS.textContent = String(S);
+
+        const Vnow = bsPrice(S, K, r, sig, T, isCall);
+        const intr = isCall ? Math.max(S - K, 0) : Math.max(K - S, 0);
+        const timeVal = Vnow - intr;
+        let d1 = NaN, d2 = NaN;
+        if (T > 1e-10) {
+            d1 = (Math.log(S / K) + (r + 0.5 * sig * sig) * T) / (sig * Math.sqrt(T));
+            d2 = d1 - sig * Math.sqrt(T);
+        }
+        mV.textContent = fmt(Vnow);
+        mIntr.textContent = fmt(intr);
+        mTime.textContent = fmt(timeVal);
+        mD1.textContent = isNaN(d1) ? '—' : fmt(d1);
+        mD2.textContent = isNaN(d2) ? '—' : fmt(d2);
+
+        // Layout: two panels
+        const Wc = canvas.width, Hc = canvas.height;
+        ctx.clearRect(0, 0, Wc, Hc);
+        const pad = 10;
+        const panelW = (Wc - 3 * pad) / 2;
+        const titleH = 18;
+        const panelY = pad + titleH;
+        const panelH = Hc - panelY - 30;
+        const x0 = pad, x1 = pad * 2 + panelW;
+
+        // Titles
+        ctx.fillStyle = '#fbbf24';
+        ctx.font = '12px JetBrains Mono';
+        ctx.fillText('V(S,t) heatmap', x0 + 4, pad + 12);
+        ctx.fillStyle = '#34d399';
+        ctx.fillText('V(S,t) curves at chosen times', x1 + 4, pad + 12);
+
+        // S range
+        const Smin = 20, Smax = 200;
+
+        // ---------- Panel 1: heatmap ----------
+        const cols = 90, rows = 60;
+        const cellW = panelW / cols, cellH = panelH / rows;
+
+        // find max V on grid for scaling
+        let vmax = 1e-9;
+        const grid = new Float32Array(cols * rows);
+        for (let i = 0; i < cols; i++) {
+            const Si = Smin + (Smax - Smin) * (i + 0.5) / cols;
+            for (let j = 0; j < rows; j++) {
+                // j=0 is t=0 (top), j=rows-1 is t=T (bottom)
+                const tj = T * (j + 0.5) / rows;
+                const tau = T - tj;
+                const Vij = bsPrice(Si, K, r, sig, tau, isCall);
+                grid[i + j * cols] = Vij;
+                if (Vij > vmax) vmax = Vij;
+            }
+        }
+
+        for (let i = 0; i < cols; i++) {
+            for (let j = 0; j < rows; j++) {
+                const v = grid[i + j * cols] / vmax;
+                // viridis-ish ramp: dark navy -> amber
+                const r1 = Math.round(15 + 240 * v);
+                const g1 = Math.round(20 + 170 * Math.pow(v, 0.85));
+                const b1 = Math.round(50 + 30 * v - 50 * v * v);
+                ctx.fillStyle = `rgb(${r1},${Math.max(0,g1)},${Math.max(0,b1)})`;
+                ctx.fillRect(x0 + i * cellW, panelY + j * cellH, cellW + 1, cellH + 1);
+            }
+        }
+
+        // strike line
+        const Kx = x0 + (K - Smin) / (Smax - Smin) * panelW;
+        if (Kx > x0 && Kx < x0 + panelW) {
+            ctx.strokeStyle = '#fbbf24';
+            ctx.setLineDash([3, 3]);
+            ctx.lineWidth = 1.2;
+            ctx.beginPath(); ctx.moveTo(Kx, panelY); ctx.lineTo(Kx, panelY + panelH); ctx.stroke();
+            ctx.setLineDash([]);
+        }
+        // spot probe line
+        const SxP = x0 + (S - Smin) / (Smax - Smin) * panelW;
+        if (SxP > x0 && SxP < x0 + panelW) {
+            ctx.strokeStyle = '#f472b6';
+            ctx.lineWidth = 1.2;
+            ctx.beginPath(); ctx.moveTo(SxP, panelY); ctx.lineTo(SxP, panelY + panelH); ctx.stroke();
+        }
+
+        // labels
+        ctx.fillStyle = '#8b949e';
+        ctx.font = '10px JetBrains Mono';
+        ctx.fillText('S=' + Smin, x0 + 2, panelY + panelH + 12);
+        ctx.fillText('S=' + Smax, x0 + panelW - 44, panelY + panelH + 12);
+        ctx.save();
+        ctx.translate(x0 - 2, panelY + 6);
+        ctx.fillText('t=0', 0, 0);
+        ctx.restore();
+        ctx.save();
+        ctx.translate(x0 - 2, panelY + panelH - 2);
+        ctx.fillText('t=T', 0, 0);
+        ctx.restore();
+        ctx.fillStyle = '#fbbf24';
+        ctx.fillText('K', Kx + 3, panelY + 10);
+
+        // ---------- Panel 2: curves ----------
+        const np = 200;
+        const ts = [0, 0.25 * T, 0.5 * T, 0.75 * T, T];
+        const colors = ['#fbbf24', '#34d399', '#60a5fa', '#a78bfa', '#f472b6'];
+
+        // y range
+        let ymax = 0;
+        for (let i = 0; i < ts.length; i++) {
+            const tau = T - ts[i];
+            for (let k = 0; k <= np; k++) {
+                const Sk = Smin + (Smax - Smin) * k / np;
+                const v = bsPrice(Sk, K, r, sig, tau, isCall);
+                if (v > ymax) ymax = v;
+            }
+        }
+        ymax = ymax * 1.05 + 0.001;
+
+        // axes
+        ctx.strokeStyle = '#21262d';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(x1, panelY, panelW, panelH);
+        // gridlines
+        for (let g = 1; g < 5; g++) {
+            const y = panelY + g * panelH / 5;
+            ctx.beginPath(); ctx.moveTo(x1, y); ctx.lineTo(x1 + panelW, y); ctx.stroke();
+        }
+
+        // strike line
+        const Kx2 = x1 + (K - Smin) / (Smax - Smin) * panelW;
+        if (Kx2 > x1 && Kx2 < x1 + panelW) {
+            ctx.strokeStyle = '#3a4252';
+            ctx.setLineDash([3, 3]);
+            ctx.beginPath(); ctx.moveTo(Kx2, panelY); ctx.lineTo(Kx2, panelY + panelH); ctx.stroke();
+            ctx.setLineDash([]);
+        }
+
+        // curves
+        for (let i = 0; i < ts.length; i++) {
+            const tau = T - ts[i];
+            ctx.strokeStyle = colors[i];
+            ctx.lineWidth = ts[i] === T ? 2.4 : 1.6;
+            ctx.beginPath();
+            for (let k = 0; k <= np; k++) {
+                const Sk = Smin + (Smax - Smin) * k / np;
+                const v = bsPrice(Sk, K, r, sig, tau, isCall);
+                const px = x1 + (Sk - Smin) / (Smax - Smin) * panelW;
+                const py = panelY + panelH - v / ymax * panelH;
+                if (k === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+            }
+            ctx.stroke();
+        }
+
+        // spot probe marker
+        const SxP2 = x1 + (S - Smin) / (Smax - Smin) * panelW;
+        if (SxP2 > x1 && SxP2 < x1 + panelW) {
+            ctx.strokeStyle = '#f472b6';
+            ctx.lineWidth = 1;
+            ctx.beginPath(); ctx.moveTo(SxP2, panelY); ctx.lineTo(SxP2, panelY + panelH); ctx.stroke();
+            // dot at (S, V(S,0))
+            const py = panelY + panelH - Vnow / ymax * panelH;
+            ctx.fillStyle = '#f472b6';
+            ctx.beginPath(); ctx.arc(SxP2, py, 3.5, 0, 2 * Math.PI); ctx.fill();
+        }
+
+        // labels
+        ctx.fillStyle = '#8b949e';
+        ctx.font = '10px JetBrains Mono';
+        ctx.fillText('S=' + Smin, x1 + 2, panelY + panelH + 12);
+        ctx.fillText('S=' + Smax, x1 + panelW - 44, panelY + panelH + 12);
+
+        // legend
+        const legendLabels = ['t=0', 't=T/4', 't=T/2', 't=3T/4', 't=T'];
+        ctx.font = '10px JetBrains Mono';
+        for (let i = 0; i < legendLabels.length; i++) {
+            ctx.fillStyle = colors[i];
+            ctx.fillText('— ' + legendLabels[i], x1 + 6, panelY + 12 + i * 12);
+        }
+    }
+
+    [sK, sT, sSig, sR, sS].forEach(el => el.addEventListener('input', draw));
+    sel.addEventListener('change', draw);
+    draw();
+})();
+</script>
+</body>
+</html>
